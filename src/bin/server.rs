@@ -32,33 +32,72 @@ async fn main() {
 
         tokio::select! {
             // DOOR 1: Public web visitor hits port 8000
+            // DOOR 1: Public web visitor hits port 8000
             public_conn = public_listener.accept() => {
-                if let Ok((client_stream, _)) = public_conn {
-                    let target_subdomain = "dhinesh-dashboard".to_string(); 
+                if let Ok((mut client_stream, _)) = public_conn {
+                    let agents_clone = agents.clone();
+                    let pending_visitors_clone = pending_visitors.clone();
 
-                    let agent_tx = {
-                        let lock = agents.lock().unwrap();
-                        lock.get(&target_subdomain).cloned()
-                    };
+                    tokio::spawn(async move {
+                        // 1. Peek at incoming bytes without consuming them from the TCP buffer yet
+                        let mut buf = [0; 1024];
+                        if let Ok(n) = client_stream.peek(&mut buf).await {
+                            let http_request = String::from_utf8_lossy(&buf[..n]);
+                            
+                            // 2. Parse out the "Host:" header cleanly
+                            let mut target_subdomain = None;
+                            for line in http_request.lines() {
+                                if line.to_lowercase().starts_with("host:") {
+                                    // Strip "host:" prefix and spaces (e.g., "Host: dhinesh.macha.live:8000")
+                                    let host_content = line[5..].trim(); 
+                                    
+                                    // Strip out port if it exists -> "dhinesh.macha.live"
+                                    let domain_part = host_content.split(':').next().unwrap_or(host_content);
+                                    
+                                    // Advanced check: Ensure they are actually using your domain!
+                                    if domain_part.ends_with("macha.live") {
+                                        // Split by dot and grab the first segment -> "dhinesh"
+                                        if let Some(subdomain) = domain_part.split('.').next() {
+                                            // Handle the edge case if someone goes to just "macha.live" directly
+                                            if subdomain != "macha" && subdomain != "www" {
+                                                target_subdomain = Some(subdomain.to_string());
+                                            }
+                                        }
+                                    }
+                                    break; 
+                                }
+                            }
 
-                    if let Some(control_tx) = agent_tx {
-                        println!("Server: Visitor arrived. Creating slot and signaling agent...");
-                        
-                        let (visitor_tx, mut visitor_rx) = mpsc::channel::<TcpStream>(1);
-                        {
-                            let mut lock = pending_visitors.lock().unwrap();
-                            lock.insert(target_subdomain.clone(), visitor_tx);
+                            // Fallback to a default pool if no valid subdomain was explicitly provided
+                            let target_subdomain = target_subdomain.unwrap_or_else(|| "default".to_string());
+                            println!("Server: Inbound request targeting subdomain routing register: '{}'", target_subdomain);
+
+                            // 3. Look up the extracted subdomain in our map registry
+                            let agent_tx = {
+                                let lock = agents_clone.lock().unwrap();
+                                lock.get(&target_subdomain).cloned()
+                            };
+
+                            if let Some(control_tx) = agent_tx {
+                                println!("Server: Routing packet to active agent cluster: {}", target_subdomain);
+                                
+                                let (visitor_tx, mut visitor_rx) = mpsc::channel::<TcpStream>(1);
+                                {
+                                    let mut lock = pending_visitors_clone.lock().unwrap();
+                                    lock.insert(target_subdomain.clone(), visitor_tx);
+                                }
+
+                                // Signal the agent over the control plane
+                                let _ = control_tx.send(client_stream).await;
+                            } else {
+                                println!("Server Warning: Visitor arrived but agent '{}' is offline!", target_subdomain);
+                                let response = b"HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\nMacha Error: Agent Offline";
+                                let _ = client_stream.write_all(response).await;
+                            }
                         }
-
-                        // Send signal to agent over control channel
-                        let _ = control_tx.send(client_stream).await;
-                    } else {
-                        println!("Server Warning: Visitor arrived but agent is offline!");
-                    }
+                    });
                 }
             }
-
-            // DOOR 2: Agent registers Control Channel
             // DOOR 2: Agent registers Control Channel
             control_conn = control_listener.accept() => {
                 if let Ok((mut control_stream, _)) = control_conn {
@@ -82,7 +121,6 @@ async fn main() {
                                 let subdomain_clone = subdomain.clone();
                                 
                                 tokio::spawn(async move {
-                                    // We wrap the stream in an Option so we can safely extract it ONCE
                                     let mut stream_container = Some(visitor_stream);
                                     let mut attempts = 0;
                                     
@@ -93,13 +131,10 @@ async fn main() {
                                         };
                                         
                                         if let Some(tx) = matched_sender {
-                                            // Take the stream out of the container leaving None behind
                                             if let Some(stream) = stream_container.take() {
                                                 if let Err(mpsc::error::SendError(returned_stream)) = tx.send(stream).await {
-                                                    // If sending failed, put the stream BACK into our container for the next attempt!
                                                     stream_container = Some(returned_stream);
                                                 } else {
-                                                    // Success! The stream was safely passed to port 9001
                                                     break;
                                                 }
                                             }
@@ -115,6 +150,7 @@ async fn main() {
                     });
                 }
             }
+
             // DOOR 3: Agent opens Data Line
             data_conn = data_listener.accept() => {
                 if let Ok((mut agent_data_stream, _)) = data_conn {
@@ -124,7 +160,6 @@ async fn main() {
                         if let Ok(n) = agent_data_stream.read(&mut buf).await {
                             let subdomain = String::from_utf8_lossy(&buf[..n]).trim().to_string();
                             
-                            // Create a channel slot to receive our visitor stream
                             let (tx, mut rx) = mpsc::channel::<TcpStream>(1);
                             {
                                 let mut lock = pending_visitors_clone.lock().unwrap();
