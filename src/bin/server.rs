@@ -163,16 +163,18 @@ async fn main() {
             // listening for any agents tries to connect to the control listener
             Ok((tcp, peer)) = control_listener.accept() => {
                 let acceptor = tls_acceptor.clone();
-                let agents   = agents.clone();
-                let idle_tx  = idle_tx.clone();
-                let idle_rx  = idle_rx.clone();
-                let token    = auth_token.clone();
-                let reg_lim  = reg_limits.clone();
-                let dom      = domain.clone();
-                let sch      = scheme.clone();
+                let ctx = ControlCtx {
+                    agents: agents.clone(),
+                    idle_tx: idle_tx.clone(),
+                    idle_rx: idle_rx.clone(),
+                    auth_token: auth_token.clone(),
+                    reg_limits: reg_limits.clone(),
+                    domain: domain.clone(),
+                    scheme: scheme.clone(),
+                };
                 tokio::spawn(async move {
                     match wrap_tls(tcp, acceptor.as_deref()).await {
-                        Ok(stream) => handle_control(stream, peer, agents, idle_tx, idle_rx, token, reg_lim, dom, sch).await,
+                        Ok(stream) => handle_control(stream, peer, ctx).await,
                         Err(e) => warn!("TLS handshake failed: {e}"),
                     }
                 });
@@ -272,9 +274,7 @@ async fn handle_public(
 
 // ── Control handler ───────────────────────────────────────────────────────────
 
-async fn handle_control(
-    mut stream: AnyStream,
-    peer: SocketAddr,
+struct ControlCtx {
     agents: Agents,
     idle_tx: IdleTx,
     idle_rx: IdleRx,
@@ -282,11 +282,13 @@ async fn handle_control(
     reg_limits: RegLimits,
     domain: Arc<String>,
     scheme: Arc<String>,
-) {
+}
+
+async fn handle_control(mut stream: AnyStream, peer: SocketAddr, ctx: ControlCtx) {
     // Per-IP registration rate limit
     {
         let ip = peer.ip().to_string();
-        let tracker = reg_limits
+        let tracker = ctx.reg_limits
             .entry(ip)
             .or_insert_with(|| Mutex::new(RegTracker::new()));
         if !tracker.lock().unwrap().allow() {
@@ -326,7 +328,7 @@ async fn handle_control(
     }
 
     // Validate token
-    if let Some(required) = &auth_token {
+    if let Some(required) = &ctx.auth_token {
         match provided_token {
             Some(t) if t == required.as_str() => {}
             _ => {
@@ -337,7 +339,7 @@ async fn handle_control(
     }
 
     // Reject if already in use
-    if agents.contains_key(&subdomain) {
+    if ctx.agents.contains_key(&subdomain) {
         let _ = stream.write_all(b"ERR subdomain already in use\n").await;
         return;
     }
@@ -345,13 +347,13 @@ async fn handle_control(
     let (replenish_tx, mut replenish_rx) = mpsc::channel::<()>(POOL_SIZE * 2);
     let (pool_tx, pool_rx) = mpsc::channel::<AnyStream>(POOL_SIZE * 2);
 
-    agents.insert(subdomain.clone(), replenish_tx);
-    idle_tx.insert(subdomain.clone(), pool_tx);
-    idle_rx.insert(subdomain.clone(), Arc::new(tokio::sync::Mutex::new(pool_rx)));
+    ctx.agents.insert(subdomain.clone(), replenish_tx);
+    ctx.idle_tx.insert(subdomain.clone(), pool_tx);
+    ctx.idle_rx.insert(subdomain.clone(), Arc::new(tokio::sync::Mutex::new(pool_rx)));
 
-    let url = format!("{scheme}://{subdomain}.{domain}");
+    let url = format!("{}://{subdomain}.{}", ctx.scheme, ctx.domain);
     if stream.write_all(format!("OK {url}\n").as_bytes()).await.is_err() {
-        cleanup(&subdomain, &agents, &idle_tx, &idle_rx);
+        cleanup(&subdomain, &ctx.agents, &ctx.idle_tx, &ctx.idle_rx);
         return;
     }
 
@@ -359,7 +361,7 @@ async fn handle_control(
 
     for _ in 0..POOL_SIZE {
         if stream.write_all(b"CONNECT\n").await.is_err() {
-            cleanup(&subdomain, &agents, &idle_tx, &idle_rx);
+            cleanup(&subdomain, &ctx.agents, &ctx.idle_tx, &ctx.idle_rx);
             return;
         }
     }
@@ -382,15 +384,10 @@ async fn handle_control(
     });
 
     let mut drain = BufReader::new(reader).lines();
-    loop {
-        match drain.next_line().await {
-            Ok(Some(_)) => {}
-            _ => break,
-        }
-    }
+    while let Ok(Some(_)) = drain.next_line().await {}
 
     write_task.abort();
-    cleanup(&subdomain, &agents, &idle_tx, &idle_rx);
+    cleanup(&subdomain, &ctx.agents, &ctx.idle_tx, &ctx.idle_rx);
     info!(%subdomain, "agent disconnected");
 }
 
@@ -488,10 +485,10 @@ fn parse_subdomain(req: &str, domain: &str) -> Option<String> {
         if host == domain || host == format!("www.{domain}") || host.is_empty() {
             return None;
         }
-        if let Some(sub) = host.strip_suffix(suffix.as_str()) {
-            if !sub.is_empty() {
-                return Some(sub.to_string());
-            }
+        if let Some(sub) = host.strip_suffix(suffix.as_str())
+            && !sub.is_empty()
+        {
+            return Some(sub.to_string());
         }
         break;
     }

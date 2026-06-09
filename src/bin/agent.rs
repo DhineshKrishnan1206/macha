@@ -240,14 +240,9 @@ async fn run_dashboard(state: Arc<DashState>, port: u16) {
             return;
         }
     };
-    loop {
-        match listener.accept().await {
-            Ok((stream, _)) => {
-                let s = Arc::clone(&state);
-                tokio::spawn(serve_dashboard(s, stream));
-            }
-            Err(_) => break,
-        }
+    while let Ok((stream, _)) = listener.accept().await {
+        let s = Arc::clone(&state);
+        tokio::spawn(serve_dashboard(s, stream));
     }
 }
 
