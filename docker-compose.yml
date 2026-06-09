@@ -1,0 +1,29 @@
+services:
+  macha:
+    build: .
+    image: macha-server
+    restart: unless-stopped
+    ports:
+      - "80:8080"     # public HTTP  (put nginx/caddy in front for HTTPS)
+      - "9000:9000"   # agent control plane
+      - "9001:9001"   # agent data plane
+    environment:
+      PUBLIC_PORT: 8080
+      CONTROL_PORT: 9000
+      DATA_PORT: 9001
+      RUST_LOG: server=info
+
+      # ── Self-hosting: set these for your own domain ──────────────────────────
+      # DOMAIN: tunnel.mycompany.com     # base domain  (default: macha.live)
+      # PUBLIC_SCHEME: https             # http or https (default: https)
+
+      # ── Authentication: require agents to present a token ────────────────────
+      # AUTH_TOKEN: change-me-to-a-long-random-secret
+
+      # ── TLS for agent↔server connections (ports 9000/9001) ──────────────────
+      # TLS_CERT: /certs/fullchain.pem
+      # TLS_KEY:  /certs/privkey.pem
+
+    # Uncomment to mount TLS certificates from the host:
+    # volumes:
+    #   - /etc/letsencrypt/live/tunnel.mycompany.com:/certs:ro

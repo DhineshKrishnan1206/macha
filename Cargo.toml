@@ -1,7 +1,35 @@
 [package]
 name = "macha"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+description = "Expose localhost to the internet — a simple, free HTTP tunnel"
+license = "MIT"
+keywords = ["tunnel", "proxy", "localhost", "expose", "ngrok"]
+categories = ["network-programming", "command-line-utilities"]
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "macha"
+path = "src/bin/agent.rs"
+
+[lib]
+name = "macha"
+path = "src/lib.rs"
 
 [dependencies]
-tokio = { version = "1.52.3", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1", features = ["v4"] }
+clap = { version = "4", features = ["derive", "env"] }
+dashmap = "6"
+
+# TLS
+tokio-rustls   = { version = "0.26", features = ["ring"] }
+rustls         = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2"
+webpki-roots   = "0.26"

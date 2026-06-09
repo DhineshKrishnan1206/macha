@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Macha Docs — full reference</title>
+  <meta name="description" content="Complete documentation for Macha — installation, CLI reference, library API, self-hosting, TLS, and more." />
+  <style>
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #111111;
+      --surface2: #161616;
+      --border:   #222222;
+      --text:     #e4e4e4;
+      --muted:    #666;
+      --muted2:   #999;
+      --green:    #4ade80;
+      --green-dim: rgba(74,222,128,0.1);
+      --sidebar-w: 240px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px; line-height: 1.7;
+    }
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, .mono {
+      font-family: "JetBrains Mono","Fira Code",ui-monospace,monospace;
+      font-size: 0.86em;
+    }
+
+    /* ── Top nav ───────────────────────────────────────── */
+    .topnav {
+      position: sticky; top: 0; z-index: 30;
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0 1.5rem; height: 52px;
+      background: rgba(13,13,13,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topnav-logo {
+      font-family: "JetBrains Mono",monospace;
+      font-size: 1rem; font-weight: 700; color: var(--green);
+    }
+    .topnav-logo span { color: var(--muted2); font-weight: 400; }
+    .topnav-sep { color: var(--muted); font-size: 0.9rem; }
+    .topnav-title { color: var(--muted2); font-size: 0.88rem; }
+    .topnav-home { margin-left: auto; color: var(--muted2); font-size: 0.82rem; }
+    .topnav-home:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Layout ────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      min-height: calc(100vh - 52px);
+    }
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
+    /* ── Sidebar ───────────────────────────────────────── */
+    .sidebar {
+      position: sticky; top: 52px;
+      height: calc(100vh - 52px); overflow-y: auto;
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 0;
+    }
+    .sidebar-section {
+      padding: 0 1.25rem;
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 0.4rem; margin-top: 1.5rem;
+    }
+    .sidebar-section:first-child { margin-top: 0; }
+    .sidebar a {
+      display: block; padding: 0.3rem 1.25rem;
+      font-size: 0.83rem; color: var(--muted2);
+      border-left: 2px solid transparent;
+    }
+    .sidebar a:hover { color: var(--text); text-decoration: none; }
+    .sidebar a.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
+
+    /* ── Content ───────────────────────────────────────── */
+    .content {
+      max-width: 780px;
+      padding: 3rem 3rem 6rem;
+    }
+    @media (max-width: 900px) { .content { padding: 2rem 1.5rem 4rem; } }
+
+    .doc-section { margin-bottom: 4rem; }
+    .doc-section + .doc-section { border-top: 1px solid var(--border); padding-top: 4rem; }
+
+    h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 0.75rem; margin-top: 2.5rem; }
+    h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 1.75rem; color: var(--text); }
+    p { color: var(--muted2); margin-bottom: 1rem; line-height: 1.75; }
+    ul, ol { padding-left: 1.4rem; color: var(--muted2); margin-bottom: 1rem; }
+    li { margin-bottom: 0.3rem; line-height: 1.65; }
+    strong { color: var(--text); }
+    .lead { font-size: 1rem; color: var(--muted2); margin-bottom: 2rem; }
+
+    /* ── Code blocks ───────────────────────────────────── */
+    .cb {
+      position: relative;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+      margin: 1rem 0;
+    }
+    .cb-label {
+      font-size: 0.7rem; color: var(--muted);
+      padding: 0.35rem 1rem; border-bottom: 1px solid var(--border);
+      font-family: monospace; letter-spacing: 0.3px;
+    }
+    .cb pre {
+      padding: 0.9rem 1.1rem;
+      font-size: 0.83rem; line-height: 1.8; overflow-x: auto;
+      color: var(--text); font-family: "JetBrains Mono",monospace;
+    }
+    pre .c  { color: #4b5563; }
+    pre .k  { color: #c084fc; }
+    pre .s  { color: #86efac; }
+    pre .fn { color: #67e8f9; }
+    pre .g  { color: var(--green); }
+    pre .w  { color: var(--muted2); }
+    .copy-btn {
+      position: absolute; top: 0.3rem; right: 0.5rem;
+      background: var(--border); border: none;
+      color: var(--muted); font-size: 0.7rem;
+      padding: 0.22rem 0.5rem; border-radius: 4px;
+      cursor: pointer; font-family: monospace;
+    }
+    .copy-btn:hover { background: #333; color: var(--text); }
+
+    /* Inline code */
+    p code, li code, td code {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 0.1em 0.35em; border-radius: 4px; color: var(--green);
+    }
+
+    /* ── Callout ───────────────────────────────────────── */
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 6px; padding: 0.9rem 1.1rem;
+      margin: 1.25rem 0; font-size: 0.88rem; color: var(--muted2);
+    }
+    .callout strong { color: var(--green); }
+
+    /* ── Flag table ────────────────────────────────────── */
+    .flag-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.83rem; }
+    .flag-table th, .flag-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .flag-table th { color: var(--muted); font-weight: 400; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .flag-table td:first-child { font-family: monospace; color: var(--green); white-space: nowrap; }
+    .flag-table td:nth-child(2) { font-family: monospace; color: var(--muted2); font-size: 0.78rem; white-space: nowrap; }
+    .flag-table td:last-child { color: var(--muted2); }
+
+    /* ── Step indicator ────────────────────────────────── */
+    .steps { list-style: none; padding: 0; }
+    .steps > li {
+      display: grid; grid-template-columns: 28px 1fr; gap: 0.75rem;
+      margin-bottom: 1.5rem; align-items: start;
+    }
+    .steps .sn {
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--green); color: #000;
+      font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top nav ───────────────────────────────────────────── -->
+<div class="topnav">
+  <div class="topnav-logo">macha<span>.live</span></div>
+  <span class="topnav-sep">/</span>
+  <span class="topnav-title">docs</span>
+  <a href="https://macha.live" class="topnav-home">← macha.live</a>
+</div>
+
+<div class="layout">
+
+<!-- ── Sidebar ────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-section">Getting started</div>
+  <a href="#installation">Installation</a>
+  <a href="#first-tunnel">Your first tunnel</a>
+  <a href="#dashboard">Local dashboard</a>
+
+  <div class="sidebar-section">CLI reference</div>
+  <a href="#cli-flags">Flags &amp; env vars</a>
+
+  <div class="sidebar-section">Rust library</div>
+  <a href="#lib-quickstart">Quick start</a>
+  <a href="#lib-builder">Builder API</a>
+  <a href="#lib-log-channel">Log channel</a>
+
+  <div class="sidebar-section">Self-hosting</div>
+  <a href="#selfhost-docker">Docker setup</a>
+  <a href="#selfhost-env">Server env vars</a>
+  <a href="#selfhost-caddy">Caddy / HTTPS</a>
+  <a href="#selfhost-tls">TLS for agents</a>
+
+  <div class="sidebar-section">Security</div>
+  <a href="#auth-token">Auth tokens</a>
+  <a href="#rate-limiting">Rate limiting</a>
+  <a href="#reserved">Reserved subdomains</a>
+</aside>
+
+<!-- ── Content ────────────────────────────────────────────── -->
+<main class="content">
+
+  <!-- ── Intro ─────────────────────────────────────────────── -->
+  <div class="doc-section" id="intro">
+    <h1>Macha docs</h1>
+    <p class="lead">
+      Macha exposes a port on your local machine to the public internet.
+      No account, no signup, one command.
+    </p>
+    <div class="callout">
+      <strong>New here?</strong> Start at <a href="#first-tunnel">Your first tunnel</a> — you'll have a live URL in under a minute.
+    </div>
+  </div>
+
+  <!-- ── Installation ──────────────────────────────────────── -->
+  <div class="doc-section" id="installation">
+    <h2>Installation</h2>
+    <p>Pick the method that suits your platform. All paths end up with a single <code>macha</code> binary.</p>
+
+    <h3>Mac</h3>
+    <div class="cb">
+      <button class="copy-btn" onclick="cp('curl -fsSL https://macha.live/install.sh | bash',this)">copy</button>
+      <pre>curl -fsSL https://macha.live/install.sh | bash</pre>
+    </div>
+    <p>Downloads the correct pre-built binary for Apple Silicon (<code>aarch64</code>) or Intel (<code>x86_64</code>) and installs it to <code>/usr/local/bin</code>.</p>
+
+    <h3>Linux</h3>
+    <div class="cb">
+      <button class="copy-btn" onclick="cp('curl -fsSL https://macha.live/install.sh | bash',this)">copy</button>
+      <pre>curl -fsSL https://macha.live/install.sh | bash</pre>
+    </div>
+    <p>Statically linked with <code>musl</code> — works on any Linux distribution with no libc dependency. Supports <code>x86_64</code> and <code>aarch64</code>.</p>
+
+    <h3>Windows</h3>
+    <div class="cb">
+      <div class="cb-label">PowerShell</div>
+      <button class="copy-btn" onclick="cp('irm https://macha.live/install.ps1 | iex',this)">copy</button>
+      <pre>irm https://macha.live/install.ps1 | iex</pre>
+    </div>
+    <p>Installs to <code>%LOCALAPPDATA%\macha\bin</code> and adds it to your user <code>PATH</code>. Restart your terminal after install.</p>
+
+    <h3>From source (Cargo)</h3>
+    <div class="cb">
+      <button class="copy-btn" onclick="cp('cargo install macha',this)">copy</button>
+      <pre>cargo install macha</pre>
+    </div>
+    <p>Requires the <a href="https://rustup.rs">Rust toolchain</a>. Compiles from crates.io — takes about a minute on first run.</p>
+
+    <h3>Verify</h3>
+    <div class="cb">
+      <pre>macha --version</pre>
+    </div>
+  </div>
+
+  <!-- ── First tunnel ──────────────────────────────────────── -->
+  <div class="doc-section" id="first-tunnel">
+    <h2>Your first tunnel</h2>
+    <p>Two things are needed: a local server running, and the subdomain you want.</p>
+
+    <ul class="steps">
+      <li>
+        <div class="sn">1</div>
+        <div>
+          <strong>Start your app</strong>
+          <p>Macha works with any server. The only thing it needs is a port number.</p>
+          <div class="cb">
+            <div class="cb-label">examples</div>
+            <pre><span class="c"># Node / Express on :3000</span>
+node server.js
+
+<span class="c"># Python / FastAPI on :8000</span>
+uvicorn main:app --port 8000
+
+<span class="c"># Anything — just know the port</span></pre>
+          </div>
+        </div>
+      </li>
+      <li>
+        <div class="sn">2</div>
+        <div>
+          <strong>Run Macha</strong>
+          <div class="cb">
+            <button class="copy-btn" onclick="cp('macha --port 3000 --subdomain myapp',this)">copy</button>
+            <pre>macha --port 3000 --subdomain myapp</pre>
+          </div>
+          <p>Replace <code>3000</code> with your app's port and <code>myapp</code> with any subdomain you want (letters, digits, hyphens — max 63 characters).</p>
+        </div>
+      </li>
+      <li>
+        <div class="sn">3</div>
+        <div>
+          <strong>Get your URL</strong>
+          <div class="cb">
+            <pre><span class="w">  Dashboard → </span><span style="color:#60a5fa">http://127.0.0.1:4040</span>
+<span class="g">✓  Tunnel: https://myapp.macha.live</span></pre>
+          </div>
+          <p>Share <code>https://myapp.macha.live</code> with anyone. Open <code>http://127.0.0.1:4040</code> to see requests in real time.</p>
+        </div>
+      </li>
+    </ul>
+
+    <div class="callout">
+      <strong>Subdomain taken?</strong> Subdomains are first-come, first-served per session.
+      If <code>myapp</code> is already registered by another agent, pick a different one.
+      Subdomains are released when the agent disconnects.
+    </div>
+  </div>
+
+  <!-- ── Dashboard ─────────────────────────────────────────── -->
+  <div class="doc-section" id="dashboard">
+    <h2>Local dashboard</h2>
+    <p>
+      Every time you run <code>macha</code>, a dashboard starts automatically at
+      <code>http://127.0.0.1:4040</code>. Open it in your browser.
+    </p>
+    <p>The dashboard shows:</p>
+    <ul>
+      <li>Connection status and tunnel URL</li>
+      <li>Stats — total requests, bytes in/out, average response time, uptime</li>
+      <li>Live request log — method, path, size, duration — updates in real time</li>
+    </ul>
+    <p>It uses <strong>Server-Sent Events</strong> so the log updates live without polling.</p>
+
+    <h3>Change the dashboard port</h3>
+    <div class="cb">
+      <pre>macha --port 3000 --subdomain myapp --dashboard-port 5050</pre>
+    </div>
+    <p>Set <code>--dashboard-port 0</code> to disable the dashboard entirely.</p>
+  </div>
+
+  <!-- ── CLI flags ─────────────────────────────────────────── -->
+  <div class="doc-section" id="cli-flags">
+    <h2>CLI flags &amp; environment variables</h2>
+    <p>Every flag has a corresponding environment variable. Flags take precedence.</p>
+
+    <table class="flag-table">
+      <thead>
+        <tr><th>Flag</th><th>Env var</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>--port, -p</td><td>PORT</td><td>Local port to expose <strong>(required)</strong></td></tr>
+        <tr><td>--subdomain, -s</td><td>SUBDOMAIN</td><td>Subdomain to register — <code>myapp</code> → <code>myapp.macha.live</code> <strong>(required)</strong></td></tr>
+        <tr><td>--server</td><td>MACHA_SERVER</td><td>Tunnel server hostname (default: <code>macha.live</code>)</td></tr>
+        <tr><td>--control-port</td><td>CONTROL_PORT</td><td>Server control plane port (default: <code>9000</code>)</td></tr>
+        <tr><td>--data-port</td><td>DATA_PORT</td><td>Server data plane port (default: <code>9001</code>)</td></tr>
+        <tr><td>--token</td><td>MACHA_TOKEN</td><td>Auth token (required when server has AUTH_TOKEN set)</td></tr>
+        <tr><td>--tls</td><td>—</td><td>Enable TLS using Mozilla root certs (for <code>macha.live</code>)</td></tr>
+        <tr><td>--tls-ca &lt;PATH&gt;</td><td>—</td><td>Enable TLS with a custom CA certificate (for self-signed certs)</td></tr>
+        <tr><td>--tls-insecure</td><td>—</td><td>Enable TLS without cert verification — dev only</td></tr>
+        <tr><td>--no-reconnect</td><td>—</td><td>Exit on disconnect instead of reconnecting</td></tr>
+        <tr><td>--dashboard-port</td><td>MACHA_DASHBOARD_PORT</td><td>Dashboard HTTP port (default: <code>4040</code>, set 0 to disable)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Examples</h3>
+    <div class="cb">
+      <pre><span class="c"># Basic</span>
+macha --port 3000 --subdomain myapp
+
+<span class="c"># Using env vars (good for .env files)</span>
+PORT=3000 SUBDOMAIN=myapp macha
+
+<span class="c"># Self-hosted server with auth token</span>
+macha --port 3000 --subdomain myapp \
+      --server tunnel.yourcompany.com \
+      --token my-secret-token \
+      --tls
+
+<span class="c"># Run once (no reconnect), custom dashboard port</span>
+macha --port 8080 --subdomain staging \
+      --no-reconnect \
+      --dashboard-port 5050</pre>
+    </div>
+  </div>
+
+  <!-- ── Library: quickstart ───────────────────────────────── -->
+  <div class="doc-section" id="lib-quickstart">
+    <h2>Rust library — quick start</h2>
+    <p>Embed tunneling directly in your Rust app with no external process.</p>
+
+    <div class="cb">
+      <div class="cb-label">Cargo.toml</div>
+      <pre>[dependencies]
+macha = <span class="s">"0.2"</span>
+tokio = { version = <span class="s">"1"</span>, features = [<span class="s">"full"</span>] }</pre>
+    </div>
+
+    <div class="cb">
+      <div class="cb-label">src/main.rs — one-liner</div>
+      <pre><span class="k">use</span> macha;
+
+<span class="k">#[tokio::main]</span>
+<span class="k">async fn</span> <span class="fn">main</span>() -> macha::<span class="fn">Result</span>&lt;()&gt; {
+    <span class="c">// blocks until disconnected; auto-reconnects by default</span>
+    macha::<span class="fn">start</span>(<span class="s">"myapp"</span>, 3000).<span class="fn">await</span>
+}</pre>
+    </div>
+
+    <h3>Run in the background alongside your server</h3>
+    <div class="cb">
+      <pre><span class="k">use</span> macha::Tunnel;
+
+<span class="k">#[tokio::main]</span>
+<span class="k">async fn</span> <span class="fn">main</span>() -> macha::<span class="fn">Result</span>&lt;()&gt; {
+    <span class="k">let</span> tunnel = Tunnel::<span class="fn">builder</span>(<span class="s">"myapp"</span>, 3000)
+        .<span class="fn">build</span>()?;
+
+    tokio::<span class="fn">spawn</span>(<span class="k">async move</span> {
+        <span class="k">let</span> _ = tunnel.<span class="fn">run</span>().<span class="fn">await</span>;
+    });
+
+    <span class="c">// start your own server here…</span>
+    std::future::<span class="fn">pending</span>::&lt;()&gt;().<span class="fn">await</span>;
+    <span class="fn">Ok</span>(())
+}</pre>
+    </div>
+  </div>
+
+  <!-- ── Library: builder ──────────────────────────────────── -->
+  <div class="doc-section" id="lib-builder">
+    <h2>Builder API</h2>
+    <p>All options are chainable on <code>Tunnel::builder(subdomain, port)</code>.</p>
+
+    <table class="flag-table">
+      <thead><tr><th>Method</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>.server(host)</td><td>&amp;str</td><td>Tunnel server hostname (default: <code>"macha.live"</code>)</td></tr>
+        <tr><td>.control_port(n)</td><td>u16</td><td>Control plane port (default: 9000)</td></tr>
+        <tr><td>.data_port(n)</td><td>u16</td><td>Data plane port (default: 9001)</td></tr>
+        <tr><td>.token(t)</td><td>&amp;str</td><td>Auth token to send on REGISTER</td></tr>
+        <tr><td>.reconnect(bool)</td><td>bool</td><td>Auto-reconnect on session end (default: true)</td></tr>
+        <tr><td>.tls()</td><td>—</td><td>Enable TLS with Mozilla root certs</td></tr>
+        <tr><td>.tls_custom_ca(path)</td><td>PathBuf</td><td>Enable TLS with a custom CA cert file</td></tr>
+        <tr><td>.tls_insecure()</td><td>—</td><td>Enable TLS, skip cert verification (dev only)</td></tr>
+        <tr><td>.log_channel(tx)</td><td>broadcast::Sender&lt;RequestLog&gt;</td><td>Receive a <code>RequestLog</code> after each completed request</td></tr>
+        <tr><td>.build()</td><td>Result&lt;Tunnel&gt;</td><td>Validates subdomain, returns Tunnel</td></tr>
+      </tbody>
+    </table>
+
+    <div class="cb">
+      <div class="cb-label">full example</div>
+      <pre><span class="k">use</span> macha::Tunnel;
+
+<span class="k">let</span> tunnel = Tunnel::<span class="fn">builder</span>(<span class="s">"myapp"</span>, 3000)
+    .<span class="fn">server</span>(<span class="s">"tunnel.yourcompany.com"</span>)
+    .<span class="fn">token</span>(<span class="s">"my-secret-token"</span>)
+    .<span class="fn">tls</span>()
+    .<span class="fn">reconnect</span>(<span class="k">true</span>)
+    .<span class="fn">build</span>()?;
+
+tunnel.<span class="fn">run</span>().<span class="fn">await</span>?;</pre>
+    </div>
+  </div>
+
+  <!-- ── Library: log channel ──────────────────────────────── -->
+  <div class="doc-section" id="lib-log-channel">
+    <h2>Log channel</h2>
+    <p>
+      Wire a <code>tokio::sync::broadcast</code> channel into the tunnel to receive a
+      <code>RequestLog</code> after every completed request.
+    </p>
+
+    <div class="cb">
+      <pre><span class="k">use</span> macha::{Tunnel, RequestLog};
+<span class="k">use</span> tokio::sync::broadcast;
+
+<span class="k">let</span> (tx, <span class="k">mut</span> rx) = broadcast::channel::&lt;RequestLog&gt;(256);
+
+<span class="c">// spawn log consumer</span>
+tokio::<span class="fn">spawn</span>(<span class="k">async move</span> {
+    <span class="k">while let</span> Ok(log) = rx.<span class="fn">recv</span>().<span class="fn">await</span> {
+        println!(<span class="s">"{} {} — {}ms"</span>, log.method, log.path, log.duration_ms);
+    }
+});
+
+Tunnel::<span class="fn">builder</span>(<span class="s">"myapp"</span>, 3000)
+    .<span class="fn">log_channel</span>(tx)
+    .<span class="fn">build</span>()?
+    .<span class="fn">run</span>().<span class="fn">await</span>?;</pre>
+    </div>
+
+    <h3>RequestLog fields</h3>
+    <table class="flag-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>subdomain</td><td>String</td><td>The registered subdomain</td></tr>
+        <tr><td>method</td><td>String</td><td>HTTP method (GET, POST, …)</td></tr>
+        <tr><td>path</td><td>String</td><td>Request path (/api/users, …)</td></tr>
+        <tr><td>bytes_in</td><td>u64</td><td>Bytes received from visitor (request)</td></tr>
+        <tr><td>bytes_out</td><td>u64</td><td>Bytes sent to visitor (response)</td></tr>
+        <tr><td>duration_ms</td><td>u64</td><td>Total time from first byte to connection close</td></tr>
+        <tr><td>timestamp_ms</td><td>u128</td><td>Unix epoch milliseconds when request completed</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Self-host: Docker ─────────────────────────────────── -->
+  <div class="doc-section" id="selfhost-docker">
+    <h2>Self-hosting — Docker</h2>
+    <p>
+      Run your own tunnel server on any VPS. Your users connect to it instead of
+      <code>macha.live</code> — traffic never leaves your infrastructure.
+    </p>
+
+    <div class="callout">
+      <strong>Prerequisites:</strong> A VPS with Docker installed, and a domain with a wildcard
+      DNS A record: <code>*.tunnel.yourcompany.com → your-vps-ip</code>.
+    </div>
+
+    <div class="cb">
+      <div class="cb-label">docker-compose.yml</div>
+      <pre>services:
+  macha:
+    image: ghcr.io/dhineshk/macha-server:latest
+    restart: unless-stopped
+    ports:
+      - <span class="s">"80:8080"</span>     <span class="c"># public HTTP (put Caddy in front for HTTPS)</span>
+      - <span class="s">"9000:9000"</span>   <span class="c"># agent control plane</span>
+      - <span class="s">"9001:9001"</span>   <span class="c"># agent data plane</span>
+    environment:
+      DOMAIN: <span class="s">tunnel.yourcompany.com</span>
+      AUTH_TOKEN: <span class="s">change-me-to-a-random-secret</span></pre>
+    </div>
+    <div class="cb">
+      <pre>docker compose up -d</pre>
+    </div>
+    <p>That's it — the server is running. Now point agents at it:</p>
+    <div class="cb">
+      <pre>macha --port 3000 --subdomain myapp \
+      --server tunnel.yourcompany.com \
+      --token your-secret</pre>
+    </div>
+    <p>Tunnel URLs will read <code>https://myapp.tunnel.yourcompany.com</code>.</p>
+  </div>
+
+  <!-- ── Self-host: env vars ───────────────────────────────── -->
+  <div class="doc-section" id="selfhost-env">
+    <h2>Server environment variables</h2>
+
+    <table class="flag-table">
+      <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>DOMAIN</td><td>macha.live</td><td>Base domain used in tunnel URLs and Host-header parsing</td></tr>
+        <tr><td>PUBLIC_SCHEME</td><td>https</td><td><code>https</code> or <code>http</code> — prefix in the URL returned to agents</td></tr>
+        <tr><td>AUTH_TOKEN</td><td>(none)</td><td>If set, agents must pass this token in REGISTER or be rejected</td></tr>
+        <tr><td>PUBLIC_PORT</td><td>8080</td><td>Port the public HTTP listener binds on inside the container</td></tr>
+        <tr><td>CONTROL_PORT</td><td>9000</td><td>Port agents use to register (control plane)</td></tr>
+        <tr><td>DATA_PORT</td><td>9001</td><td>Port agents use for idle pool connections (data plane)</td></tr>
+        <tr><td>TLS_CERT</td><td>(none)</td><td>Path to PEM certificate — enables TLS on ports 9000/9001</td></tr>
+        <tr><td>TLS_KEY</td><td>(none)</td><td>Path to PEM private key — required with TLS_CERT</td></tr>
+        <tr><td>RUST_LOG</td><td>(none)</td><td>Log verbosity — e.g. <code>server=info</code> or <code>server=debug</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Self-host: Caddy ──────────────────────────────────── -->
+  <div class="doc-section" id="selfhost-caddy">
+    <h2>HTTPS with Caddy</h2>
+    <p>
+      Caddy handles wildcard TLS certificates automatically using Let's Encrypt.
+      Add this alongside your <code>docker-compose.yml</code>:
+    </p>
+
+    <div class="cb">
+      <div class="cb-label">Caddyfile</div>
+      <pre>*.tunnel.yourcompany.com {
+    tls {
+        dns &lt;your-dns-provider&gt;
+    }
+    reverse_proxy macha:8080
+}</pre>
+    </div>
+
+    <div class="cb">
+      <div class="cb-label">docker-compose.yml (with Caddy)</div>
+      <pre>services:
+  caddy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - <span class="s">"80:80"</span>
+      - <span class="s">"443:443"</span>
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    environment:
+      &lt;DNS_PROVIDER_API_TOKEN_VAR&gt;: &lt;your-token&gt;
+
+  macha:
+    image: ghcr.io/dhineshk/macha-server:latest
+    restart: unless-stopped
+    expose: [<span class="s">"8080"</span>]
+    ports:
+      - <span class="s">"9000:9000"</span>
+      - <span class="s">"9001:9001"</span>
+    environment:
+      DOMAIN: <span class="s">tunnel.yourcompany.com</span>
+      AUTH_TOKEN: <span class="s">change-me</span>
+
+volumes:
+  caddy_data:</pre>
+    </div>
+
+    <div class="callout">
+      Caddy supports <a href="https://caddyserver.com/docs/automatic-https#wildcard-certificates">wildcard certs via DNS challenge</a>.
+      Check the Caddy docs for your DNS provider's plugin (Cloudflare, Route53, etc.).
+    </div>
+  </div>
+
+  <!-- ── Self-host: TLS for agents ─────────────────────────── -->
+  <div class="doc-section" id="selfhost-tls">
+    <h2>TLS for agent connections</h2>
+    <p>
+      By default ports 9000 and 9001 are plain TCP. If you want the agent-to-server
+      connection encrypted (important if AUTH_TOKEN is set), add TLS:
+    </p>
+
+    <div class="cb">
+      <div class="cb-label">docker-compose.yml additions</div>
+      <pre>environment:
+  TLS_CERT: /certs/fullchain.pem
+  TLS_KEY:  /certs/privkey.pem
+volumes:
+  - /etc/letsencrypt/live/tunnel.yourcompany.com:/certs:ro</pre>
+    </div>
+
+    <p>Then agents must connect with <code>--tls</code>:</p>
+    <div class="cb">
+      <pre>macha --port 3000 --subdomain myapp \
+      --server tunnel.yourcompany.com \
+      --token my-secret \
+      --tls</pre>
+    </div>
+
+    <p>For self-signed certificates, use <code>--tls-ca /path/to/ca.pem</code> instead of <code>--tls</code>.</p>
+  </div>
+
+  <!-- ── Auth token ─────────────────────────────────────────── -->
+  <div class="doc-section" id="auth-token">
+    <h2>Auth tokens</h2>
+    <p>
+      Set <code>AUTH_TOKEN</code> on the server to require all agents to authenticate.
+      Without a valid token, agents get <code>ERR invalid or missing token</code> and are disconnected.
+    </p>
+    <div class="cb">
+      <div class="cb-label">server — environment variable</div>
+      <pre>AUTH_TOKEN=a-long-random-string-here</pre>
+    </div>
+    <div class="cb">
+      <div class="cb-label">agent — flag or env var</div>
+      <pre><span class="c"># flag</span>
+macha --port 3000 --subdomain myapp --token a-long-random-string-here
+
+<span class="c"># env var</span>
+MACHA_TOKEN=a-long-random-string-here macha --port 3000 --subdomain myapp</pre>
+    </div>
+    <div class="callout">
+      <strong>Security note:</strong> Tokens are sent in plain text over the control channel.
+      Always pair <code>AUTH_TOKEN</code> with TLS on ports 9000/9001 in production.
+    </div>
+  </div>
+
+  <!-- ── Rate limiting ─────────────────────────────────────── -->
+  <div class="doc-section" id="rate-limiting">
+    <h2>Rate limiting</h2>
+    <p>The server applies two independent rate limits automatically — no configuration needed.</p>
+
+    <h3>Per-subdomain request limit</h3>
+    <p>
+      Each subdomain has a token bucket: capacity 200, refill rate 100/second.
+      Requests that exceed this are rejected with <code>HTTP 429 Too Many Requests</code>
+      without hitting the agent pool. This protects against a single tunnel overwhelming the server.
+    </p>
+
+    <h3>Per-IP registration limit</h3>
+    <p>
+      Each unique IP address can register at most 5 subdomains per minute.
+      Attempts beyond this are rejected with <code>ERR too many registration attempts</code>.
+      This prevents automated subdomain squatting.
+    </p>
+  </div>
+
+  <!-- ── Reserved subdomains ───────────────────────────────── -->
+  <div class="doc-section" id="reserved">
+    <h2>Reserved subdomains</h2>
+    <p>The following subdomains cannot be registered — they are permanently blocked:</p>
+    <div class="cb">
+      <pre><span class="w">api, www, admin, root, mail, server, dashboard, status, health,
+macha, app, staging, prod, beta, static, assets, cdn, auth,
+login, signup, register, support, help, docs, blog, dev, test</span></pre>
+    </div>
+    <p>Any attempt to register one of these returns <code>ERR reserved subdomain</code>.</p>
+  </div>
+
+</main>
+</div>
+
+<script>
+  function cp(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'copied!';
+      setTimeout(() => btn.textContent = orig, 1600);
+    });
+  }
+
+  // Highlight active sidebar link on scroll
+  const headings = document.querySelectorAll('.doc-section[id]');
+  const links = document.querySelectorAll('.sidebar a[href^="#"]');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const match = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+        if (match) match.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  headings.forEach(h => obs.observe(h));
+</script>
+</body>
+</html>

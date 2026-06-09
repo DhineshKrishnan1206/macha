@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>macha dashboard</title>
+  <style>
+    :root {
+      --bg:      #0d0d0d;
+      --surface: #141414;
+      --surface2: #1a1a1a;
+      --border:  #252525;
+      --text:    #e8e8e8;
+      --muted:   #666;
+      --green:   #4ade80;
+      --red:     #f87171;
+      --blue:    #60a5fa;
+      --yellow:  #fbbf24;
+      --orange:  #fb923c;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ─────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-rows: 52px 64px 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .logo { color: var(--green); font-size: 1rem; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: var(--muted); font-weight: 400; }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .dot.alive {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+    .dot.dead { background: var(--red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    #tunnel-url {
+      color: var(--green);
+      font-size: 0.78rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 360px;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    /* ── Stats bar ──────────────────── */
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      overflow-x: auto;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      padding: 0 1.5rem;
+      border-right: 1px solid var(--border);
+      min-width: 100px;
+    }
+    .stat:first-child { padding-left: 0; }
+    .stat-label { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 1rem; font-weight: 700; color: var(--text); margin-top: 1px; }
+    .stat-value.green { color: var(--green); }
+
+    /* ── Main area ──────────────────── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Table toolbar ──────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.6rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+
+    .toolbar-title { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle input { accent-color: var(--green); cursor: pointer; }
+
+    .clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .clear-btn:hover { background: var(--surface); color: var(--text); }
+
+    .count-badge {
+      background: var(--border);
+      color: var(--muted);
+      font-size: 0.65rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    /* ── Table ─────────────────────── */
+    .table-wrap {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: var(--surface2);
+      padding: 0.4rem 0.75rem;
+      text-align: left;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #1d1d1d;
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: var(--surface); }
+    tbody tr.new-row { animation: flash 0.8s ease-out; }
+
+    @keyframes flash {
+      0%   { background: rgba(74, 222, 128, 0.08); }
+      100% { background: transparent; }
+    }
+
+    td {
+      padding: 0.4rem 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+      color: var(--text);
+    }
+
+    .td-time { color: var(--muted); font-size: 0.75rem; min-width: 70px; }
+    .td-method { min-width: 64px; }
+    .td-path { max-width: 280px; color: var(--text); }
+    .td-num { color: var(--muted); font-size: 0.8rem; text-align: right; min-width: 70px; }
+    .td-dur { color: var(--muted); font-size: 0.8rem; text-align: right; min-width: 60px; }
+
+    /* Method badges */
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+      letter-spacing: 0.3px;
+    }
+    .badge-GET     { background: rgba(74,222,128,0.12); color: #4ade80; }
+    .badge-POST    { background: rgba(96,165,250,0.12); color: #60a5fa; }
+    .badge-PUT     { background: rgba(251,191,36,0.12); color: #fbbf24; }
+    .badge-DELETE  { background: rgba(248,113,113,0.12); color: #f87171; }
+    .badge-PATCH   { background: rgba(251,146,60,0.12); color: #fb923c; }
+    .badge-OTHER   { background: rgba(107,114,128,0.12); color: #9ca3af; }
+
+    /* ── Empty state ───────────────── */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      gap: 0.5rem;
+    }
+    .empty-icon { font-size: 2rem; opacity: 0.3; }
+    .empty-text { font-size: 0.8rem; }
+
+    /* ── Reconnecting banner ───────── */
+    .reconnect-bar {
+      display: none;
+      background: rgba(251, 146, 60, 0.1);
+      border-bottom: 1px solid rgba(251, 146, 60, 0.3);
+      color: var(--orange);
+      text-align: center;
+      font-size: 0.75rem;
+      padding: 0.4rem;
+    }
+    .reconnect-bar.show { display: block; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">macha<span>.live</span></div>
+    <div class="status-pill">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">connecting...</span>
+    </div>
+    <div id="tunnel-url">—</div>
+    <div class="header-right">
+      <span id="uptime">—</span>
+    </div>
+  </header>
+
+  <!-- Stats bar -->
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">requests</span>
+      <span class="stat-value green" id="stat-reqs">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">bytes in</span>
+      <span class="stat-value" id="stat-bin">0 B</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">bytes out</span>
+      <span class="stat-value" id="stat-bout">0 B</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">avg duration</span>
+      <span class="stat-value" id="stat-avg">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">port</span>
+      <span class="stat-value" id="stat-port">—</span>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="reconnect-bar" id="reconnect-bar">⚡ Reconnecting to agent...</div>
+
+    <div class="toolbar">
+      <span class="toolbar-title">live requests</span>
+      <span class="count-badge" id="row-count">0</span>
+      <div class="toolbar-right">
+        <label class="toggle">
+          <input type="checkbox" id="autoscroll" checked />
+          auto-scroll
+        </label>
+        <button class="clear-btn" onclick="clearTable()">clear</button>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="table-wrap">
+      <div class="empty" id="empty-state">
+        <div class="empty-icon">⚡</div>
+        <div class="empty-text">Waiting for requests through the tunnel...</div>
+      </div>
+      <table id="log-table" style="display:none">
+        <thead>
+          <tr>
+            <th>time</th>
+            <th>method</th>
+            <th>path</th>
+            <th style="text-align:right">↑ req</th>
+            <th style="text-align:right">↓ res</th>
+            <th style="text-align:right">ms</th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const MAX_ROWS = 200;
+  let totalReqs = 0, totalIn = 0, totalOut = 0, totalDur = 0;
+  let startMs = null;
+  let uptimeTimer = null;
+
+  // ── SSE ────────────────────────────────────────────────────────
+  let sse;
+  function connect() {
+    sse = new EventSource('/events');
+
+    sse.onopen = () => {
+      document.getElementById('reconnect-bar').classList.remove('show');
+    };
+
+    sse.addEventListener('status', (e) => {
+      const d = JSON.parse(e.data);
+      document.getElementById('tunnel-url').textContent = d.url || '—';
+      document.getElementById('stat-port').textContent = d.local_port || '—';
+      if (startMs === null && d.start_ms) {
+        startMs = d.start_ms;
+        startUptimeClock();
+      }
+      setConnected(d.connected);
+    });
+
+    sse.addEventListener('log', (e) => {
+      addRow(JSON.parse(e.data));
+    });
+
+    sse.onerror = () => {
+      setConnected(false);
+      document.getElementById('reconnect-bar').classList.add('show');
+      sse.close();
+      setTimeout(connect, 2000);
+    };
+  }
+
+  // ── Status indicator ───────────────────────────────────────────
+  function setConnected(ok) {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    dot.className = 'dot ' + (ok ? 'alive' : 'dead');
+    txt.textContent = ok ? 'connected' : 'disconnected';
+  }
+
+  // ── Uptime clock ───────────────────────────────────────────────
+  function startUptimeClock() {
+    if (uptimeTimer) clearInterval(uptimeTimer);
+    uptimeTimer = setInterval(() => {
+      if (!startMs) return;
+      const secs = Math.floor((Date.now() - startMs) / 1000);
+      const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+      const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+    }, 1000);
+  }
+
+  // ── Table ──────────────────────────────────────────────────────
+  function addRow(log) {
+    totalReqs++;
+    totalIn  += log.bytes_in  || 0;
+    totalOut += log.bytes_out || 0;
+    totalDur += log.duration_ms || 0;
+
+    document.getElementById('stat-reqs').textContent = totalReqs;
+    document.getElementById('stat-bin').textContent  = fmtBytes(totalIn);
+    document.getElementById('stat-bout').textContent = fmtBytes(totalOut);
+    document.getElementById('stat-avg').textContent  = Math.round(totalDur / totalReqs) + 'ms';
+    document.getElementById('row-count').textContent = totalReqs;
+
+    document.getElementById('empty-state').style.display = 'none';
+    const tbl = document.getElementById('log-table');
+    tbl.style.display = 'table';
+
+    const tbody = document.getElementById('log-body');
+    const tr = document.createElement('tr');
+    tr.className = 'new-row';
+
+    const t = new Date(log.timestamp_ms);
+    const timeStr = t.toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const method = (log.method || '?').toUpperCase();
+    const badgeClass = ['GET','POST','PUT','DELETE','PATCH'].includes(method)
+      ? `badge-${method}` : 'badge-OTHER';
+
+    tr.innerHTML = `
+      <td class="td-time">${timeStr}</td>
+      <td class="td-method"><span class="badge ${badgeClass}">${method}</span></td>
+      <td class="td-path">${escHtml(log.path || '/')}</td>
+      <td class="td-num">${fmtBytes(log.bytes_in)}</td>
+      <td class="td-num">${fmtBytes(log.bytes_out)}</td>
+      <td class="td-dur">${log.duration_ms ?? '?'}</td>
+    `;
+    tbody.prepend(tr);
+
+    // Trim to MAX_ROWS
+    while (tbody.rows.length > MAX_ROWS) tbody.deleteRow(-1);
+
+    if (document.getElementById('autoscroll').checked) {
+      const wrap = document.getElementById('table-wrap');
+      wrap.scrollTop = 0;
+    }
+  }
+
+  function clearTable() {
+    document.getElementById('log-body').innerHTML = '';
+    document.getElementById('log-table').style.display = 'none';
+    document.getElementById('empty-state').style.display = '';
+    document.getElementById('row-count').textContent = '0';
+    totalReqs = totalIn = totalOut = totalDur = 0;
+    document.getElementById('stat-reqs').textContent = '0';
+    document.getElementById('stat-bin').textContent  = '0 B';
+    document.getElementById('stat-bout').textContent = '0 B';
+    document.getElementById('stat-avg').textContent  = '—';
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function fmtBytes(n) {
+    if (!n) return '0 B';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  connect();
+</script>
+</body>
+</html>
