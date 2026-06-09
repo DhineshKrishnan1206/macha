@@ -23,9 +23,9 @@ struct Args {
     #[arg(short, long, env = "PORT")]
     port: u16,
 
-    /// Subdomain to register (e.g. "myapp" → myapp.macha.live)
+    /// Subdomain to register (e.g. "myapp" → myapp.macha.live); random if omitted
     #[arg(short, long, env = "SUBDOMAIN")]
-    subdomain: String,
+    subdomain: Option<String>,
 
     /// Tunnel server hostname
     #[arg(long, default_value = "macha.live", env = "MACHA_SERVER")]
@@ -246,11 +246,21 @@ async fn run_dashboard(state: Arc<DashState>, port: u16) {
     }
 }
 
+fn random_subdomain() -> String {
+    // 8 lowercase hex chars from a UUID — always a valid DNS label
+    uuid::Uuid::new_v4().simple().to_string()[..8].to_string()
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+    let subdomain = args.subdomain.unwrap_or_else(|| {
+        let s = random_subdomain();
+        eprintln!("  No subdomain specified — using random: {s}");
+        s
+    });
 
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -290,7 +300,7 @@ async fn main() {
     }
 
     // Build tunnel
-    let mut builder = macha::Tunnel::builder(&args.subdomain, args.port)
+    let mut builder = macha::Tunnel::builder(&subdomain, args.port)
         .server(&args.server)
         .control_port(args.control_port)
         .data_port(args.data_port)
@@ -322,7 +332,7 @@ async fn main() {
     // Since lib.rs prints "✓  Tunnel: <url>" to stdout, we can't intercept.
     // Instead: expose an on_connect hook — or just patch lib to return URL.
     // For now: mark connected after run() starts, URL set to expected value.
-    let expected_url = format!("https://{}.{}", args.subdomain, args.server);
+    let expected_url = format!("https://{subdomain}.{}", args.server);
     *state.tunnel_url.write().await = expected_url;
     state.connected.store(true, Ordering::Relaxed);
     state.broadcast_status().await;
